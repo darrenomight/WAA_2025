@@ -4,11 +4,13 @@ import { initDb } from "./db";
 import studentsRouter from "./routes/students";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
+import cors from "cors";
 
 
 const app = express();
 const PORT = 3000;
 
+app.use(cors());
 app.use(bodyParser.json());
 
 // Swagger setup
