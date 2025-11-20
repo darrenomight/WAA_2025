@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  firstName     String?
+  lastName      String?
+  role          Role           @default(REGISTERED)
+  
+  refreshTokens   RefreshToken[]
+  workoutPlans    WorkoutPlan[]
+  workoutSessions WorkoutSession[]
+  personalRecords PersonalRecord[]
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  @@index([email])
+}
+
+enum Role {
+  GUEST
+  REGISTERED
+  ADMIN
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  revoked     Boolean  @default(false)
+  replacedBy  String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+}
+
+// ==================== EXERCISES ====================
+
+model Exercise {
+  id              String            @id @default(cuid())
+  name            String
+  description     String            @db.Text
+  instructions    String            @db.Text
+  videoUrl        String?
+  imageUrl        String?
+  
+  primaryMuscle   MuscleGroup
+  secondaryMuscles MuscleGroup[]
+  equipment       Equipment
+  difficulty      Difficulty
+  movementType    MovementType
+  
+  coachingPoints  String[]
+  commonMistakes  String[]
+  
+  planExercises   PlanExercise[]
+  sessionSets     WorkoutSet[]
+  personalRecords PersonalRecord[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([primaryMuscle])
+  @@index([equipment])
+  @@index([difficulty])
+}
+
+enum MuscleGroup {
+  CHEST
+  BACK
+  SHOULDERS
+  BICEPS
+  TRICEPS
+  FOREARMS
+  ABS
+  OBLIQUES
+  QUADS
+  HAMSTRINGS
+  GLUTES
+  CALVES
+  FULL_BODY
+}
+
+enum Equipment {
+  BARBELL
+  DUMBBELL
+  KETTLEBELL
+  MACHINE
+  CABLE
+  BODYWEIGHT
+  RESISTANCE_BAND
+  OTHER
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum MovementType {
+  STRENGTH
+  CONDITIONING
+  MOBILITY
+  CARDIO
+  PLYOMETRIC
+}
+
+// ==================== WORKOUT PLANS ====================
+
+model WorkoutPlan {
+  id          String          @id @default(cuid())
+  name        String
+  description String?         @db.Text
+  
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  
+  exercises   PlanExercise[]
+  sessions    WorkoutSession[]
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@index([userId])
+}
+
+model PlanExercise {
+  id              String       @id @default(cuid())
+  
+  plan            WorkoutPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  planId          String
+  exercise        Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId      String
+  
+  orderIndex      Int
+  targetSets      Int
+  targetReps      Int?
+  targetDuration  Int?
+  restTime        Int?
+  notes           String?
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  @@unique([planId, orderIndex])
+  @@index([planId])
+  @@index([exerciseId])
+}
+
+// ==================== WORKOUT TRACKING ====================
+
+model WorkoutSession {
+  id        String       @id @default(cuid())
+  
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  plan      WorkoutPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planId    String?
+  
+  name      String?
+  startTime DateTime
+  endTime   DateTime?
+  notes     String?      @db.Text
+  
+  sets      WorkoutSet[]
+  
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  
+  @@index([userId])
+  @@index([planId])
+  @@index([startTime])
+}
+
+model WorkoutSet {
+  id              String         @id @default(cuid())
+  
+  session         WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId       String
+  exercise        Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId      String
+  
+  setNumber       Int
+  weight          Float?
+  reps            Int?
+  duration        Int?
+  isPersonalRecord Boolean       @default(false)
+  
+  completedAt     DateTime       @default(now())
+  
+  @@index([sessionId])
+  @@index([exerciseId])
+  @@index([completedAt])
+}
+
+// ==================== PERSONAL RECORDS ====================
+
+model PersonalRecord {
+  id         String   @id @default(cuid())
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId String
+  
+  recordType PRType
+  weight     Float?
+  reps       Int?
+  duration   Int?
+  
+  achievedAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([exerciseId])
+  @@index([achievedAt])
+}
+
+enum PRType {
+  ONE_REP_MAX
+  BEST_SET
+  BEST_VOLUME
+  LONGEST_DURATION
+}
