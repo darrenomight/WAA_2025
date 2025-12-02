@@ -4,6 +4,9 @@ import dotenv from "dotenv";
 import { prisma } from "./utils/prisma";
 import authRoutes from "./routes/auth";
 import exerciseRoutes from "./routes/exercises";
+import workoutPlanRoutes from "./routes/workoutPlans";
+import workoutSessionRoutes from "./routes/workoutSessions";
+import personalRecordRoutes from "./routes/personalRecords";
 
 // Load environment variables
 dotenv.config();
@@ -69,6 +72,9 @@ app.get("/health", async (req: Request, res: Response) => {
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/exercises", exerciseRoutes);
+app.use("/api/workout-plans", workoutPlanRoutes);
+app.use("/api/workout-sessions", workoutSessionRoutes);
+app.use("/api/personal-records", personalRecordRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

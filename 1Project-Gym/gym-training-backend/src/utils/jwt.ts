@@ -18,7 +18,7 @@ export interface RefreshTokenPayload extends TokenPayload {
 
 // Sign access token (short-lived: 15 minutes)
 export function signAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
+  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
 }
 
 // Sign refresh token (long-lived: 7 days)
