@@ -16,7 +16,7 @@ export default function Footer() {
           </nav>
         </div>
         <div className="mt-8 text-center text-sm text-gray-500">
-          © 2024 GymTrack. All rights reserved.
+          © 2025 GymTrack by Darren Grants. All rights reserved.
           <span className="mx-4">|</span>
           <Link href="#" className="hover:text-gray-700">
             Privacy Policy

@@ -227,7 +227,7 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 // ==================== REMOVE EXERCISE FROM PLAN ====================
-router.delete("/:planId/exercises/:exerciseId", async (req: AuthRequest, res: Response) => {
+router.delete("/:planId/exercises/:exerciseId", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -248,8 +248,21 @@ router.delete("/:planId/exercises/:exerciseId", async (req: AuthRequest, res: Re
       return res.status(403).json({ error: "Not authorized to modify this plan" });
     }
 
+    // Find the PlanExercise first
+    const planExercise = await prisma.planExercise.findFirst({
+      where: {
+        planId: planId,
+        exerciseId: exerciseId,
+      },
+    });
+
+    if (!planExercise) {
+      return res.status(404).json({ error: "Exercise not found in plan" });
+    }
+
+    // Delete by id
     await prisma.planExercise.delete({
-      where: { id: exerciseId },
+      where: { id: planExercise.id },
     });
 
     res.json({
