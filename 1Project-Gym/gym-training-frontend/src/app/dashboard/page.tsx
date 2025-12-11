@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -15,9 +17,10 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import { showToast } from '@/lib/toast';
-import type { Exercise, MuscleGroup } from '@/types';
+import type { Exercise, MuscleGroup, Equipment, Difficulty } from '@/types';
 import ExerciseDetailModal from '@/components/ExerciseDetailModal';
 import DashboardHeader from '@/components/DashboardHeader';
+import { getMuscleImage } from '@/lib/muscleImages';
 
 interface WorkoutSession {
   id: string;
@@ -43,7 +46,10 @@ export default function DashboardPage() {
   const { user, clearAuth, setUser } = useAuthStore();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedMuscle, setSelectedMuscle] = useState<string>('all');
+  const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -135,22 +141,55 @@ export default function DashboardPage() {
     checkAuth();
   }, [user, router, setUser, clearAuth]);
 
-  // Filter exercises by muscle group
+  // Filter exercises by all criteria
   useEffect(() => {
-    if (selectedMuscle === 'all') {
-      setFilteredExercises(exercises);
-    } else {
-      const filtered = exercises.filter(
+    let filtered = exercises;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter((exercise) =>
+        exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        exercise.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter by muscle group
+    if (selectedMuscle !== 'all') {
+      filtered = filtered.filter(
         (exercise) => exercise.primaryMuscle === selectedMuscle
       );
-      setFilteredExercises(filtered);
     }
-  }, [selectedMuscle, exercises]);
+
+    // Filter by equipment
+    if (selectedEquipment !== 'all') {
+      filtered = filtered.filter(
+        (exercise) => exercise.equipment === selectedEquipment
+      );
+    }
+
+    // Filter by difficulty
+    if (selectedDifficulty !== 'all') {
+      filtered = filtered.filter(
+        (exercise) => exercise.difficulty === selectedDifficulty
+      );
+    }
+
+    setFilteredExercises(filtered);
+  }, [searchQuery, selectedMuscle, selectedEquipment, selectedDifficulty, exercises]);
 
   const handleViewDetails = (exercise: Exercise) => {
     setSelectedExercise(exercise);
     setIsModalOpen(true);
   };
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedMuscle('all');
+    setSelectedEquipment('all');
+    setSelectedDifficulty('all');
+  };
+
+  const hasActiveFilters = searchQuery.trim() || selectedMuscle !== 'all' || selectedEquipment !== 'all' || selectedDifficulty !== 'all';
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -301,15 +340,31 @@ export default function DashboardPage() {
 
         {/* Exercise Library Section */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Exercise Library</h2>
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Exercise Library</h2>
               <span className="text-sm text-gray-600">
                 Showing {filteredExercises.length} of {exercises.length} exercises
               </span>
+            </div>
+
+            {/* Search Bar */}
+            <div className="w-full">
+              <Input
+                type="text"
+                placeholder="Search exercises by name or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* Filter Buttons Row */}
+            <div className="flex flex-wrap gap-3">
+              {/* Muscle Group Filter */}
               <Select value={selectedMuscle} onValueChange={setSelectedMuscle}>
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by muscle" />
+                  <SelectValue placeholder="Muscle Group" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Muscles</SelectItem>
@@ -318,14 +373,58 @@ export default function DashboardPage() {
                   <SelectItem value="SHOULDERS">Shoulders</SelectItem>
                   <SelectItem value="BICEPS">Biceps</SelectItem>
                   <SelectItem value="TRICEPS">Triceps</SelectItem>
+                  <SelectItem value="FOREARMS">Forearms</SelectItem>
                   <SelectItem value="QUADS">Quads</SelectItem>
                   <SelectItem value="HAMSTRINGS">Hamstrings</SelectItem>
                   <SelectItem value="GLUTES">Glutes</SelectItem>
                   <SelectItem value="CALVES">Calves</SelectItem>
                   <SelectItem value="ABS">Abs</SelectItem>
                   <SelectItem value="OBLIQUES">Obliques</SelectItem>
+                  <SelectItem value="FULL_BODY">Full Body</SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* Equipment Filter */}
+              <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Equipment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Equipment</SelectItem>
+                  <SelectItem value="BARBELL">Barbell</SelectItem>
+                  <SelectItem value="DUMBBELL">Dumbbell</SelectItem>
+                  <SelectItem value="KETTLEBELL">Kettlebell</SelectItem>
+                  <SelectItem value="MACHINE">Machine</SelectItem>
+                  <SelectItem value="CABLE">Cable</SelectItem>
+                  <SelectItem value="BODYWEIGHT">Bodyweight</SelectItem>
+                  <SelectItem value="RESISTANCE_BAND">Resistance Band</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Difficulty Filter */}
+              <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  <SelectItem value="BEGINNER">Beginner</SelectItem>
+                  <SelectItem value="INTERMEDIATE">Intermediate</SelectItem>
+                  <SelectItem value="ADVANCED">Advanced</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Clear Filters Button */}
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  onClick={handleClearFilters}
+                  className="ml-auto"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           </div>
 
@@ -340,20 +439,14 @@ export default function DashboardPage() {
                 <Card key={exercise.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between mb-2">
-                      <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 10V3L4 14h7v7l9-11h-7z"
-                          />
-                        </svg>
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center p-2">
+                        <Image
+                          src={getMuscleImage(exercise.primaryMuscle)}
+                          alt={exercise.primaryMuscle}
+                          width={40}
+                          height={40}
+                          className="object-contain"
+                        />
                       </div>
                       <Badge variant="secondary">{exercise.difficulty}</Badge>
                     </div>
@@ -372,8 +465,8 @@ export default function DashboardPage() {
                         <span className="text-gray-600">Equipment:</span>
                         <span className="font-medium">{exercise.equipment}</span>
                       </div>
-                      <Button 
-                        className="w-full mt-4" 
+                      <Button
+                        className="w-full mt-4"
                         variant="outline"
                         onClick={() => handleViewDetails(exercise)}
                       >

@@ -38,6 +38,15 @@ interface WorkoutSession {
   startTime: string;
   endTime: string | null;
   sets: WorkoutSet[];
+  plan?: {
+    id: string;
+    name: string;
+    exercises: Array<{
+      id: string;
+      exerciseId: string;
+      exercise: Exercise;
+    }>;
+  } | null;
 }
 
 export default function ActiveWorkoutPage() {
@@ -289,11 +298,44 @@ export default function ActiveWorkoutPage() {
                   <SelectValue placeholder="Select exercise" />
                 </SelectTrigger>
                 <SelectContent>
-                  {exercises.map((exercise) => (
-                    <SelectItem key={exercise.id} value={exercise.id}>
-                      {exercise.name} ({exercise.primaryMuscle})
-                    </SelectItem>
-                  ))}
+                  {session?.plan?.exercises && session.plan.exercises.length > 0 && (
+                    <>
+                      {/* Plan Exercises */}
+                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-blue-50">
+                        From Your Plan
+                      </div>
+                      {session.plan.exercises.map((planEx) => (
+                        <SelectItem
+                          key={planEx.exercise.id}
+                          value={planEx.exercise.id}
+                          className="bg-blue-50/50 font-medium text-blue-900"
+                        >
+                          ⭐ {planEx.exercise.name} ({planEx.exercise.primaryMuscle})
+                        </SelectItem>
+                      ))}
+
+                      {/* Other Exercises */}
+                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 mt-2">
+                        Other Exercises
+                      </div>
+                      {exercises
+                        .filter(ex => !session.plan?.exercises?.some(planEx => planEx.exerciseId === ex.id))
+                        .map((exercise) => (
+                          <SelectItem key={exercise.id} value={exercise.id}>
+                            {exercise.name} ({exercise.primaryMuscle})
+                          </SelectItem>
+                        ))}
+                    </>
+                  )}
+
+                  {/* If no plan, show all exercises */}
+                  {(!session?.plan || !session.plan.exercises || session.plan.exercises.length === 0) && (
+                    exercises.map((exercise) => (
+                      <SelectItem key={exercise.id} value={exercise.id}>
+                        {exercise.name} ({exercise.primaryMuscle})
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

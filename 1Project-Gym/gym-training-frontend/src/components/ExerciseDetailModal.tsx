@@ -27,13 +27,16 @@ export default function ExerciseDetailModal({
         <DialogHeader>
           <DialogTitle className="text-2xl">{exercise.name}</DialogTitle>
           <DialogDescription>
-            <div className="flex gap-2 mt-2">
-              <Badge variant="secondary">{exercise.difficulty}</Badge>
-              <Badge variant="outline">{exercise.primaryMuscle}</Badge>
-              <Badge variant="outline">{exercise.equipment}</Badge>
-            </div>
+            Exercise details and information
           </DialogDescription>
         </DialogHeader>
+
+        {/* Exercise Badges */}
+        <div className="flex gap-2 -mt-2">
+          <Badge variant="secondary">{exercise.difficulty}</Badge>
+          <Badge variant="outline">{exercise.primaryMuscle}</Badge>
+          <Badge variant="outline">{exercise.equipment}</Badge>
+        </div>
 
         <div className="space-y-6 mt-4">
           {/* Description */}

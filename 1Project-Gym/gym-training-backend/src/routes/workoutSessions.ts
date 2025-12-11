@@ -79,7 +79,16 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
     const session = await prisma.workoutSession.findUnique({
       where: { id },
       include: {
-        plan: true,
+        plan: {
+          include: {
+            exercises: {
+              include: {
+                exercise: true,
+              },
+              orderBy: { orderIndex: "asc" },
+            },
+          },
+        },
         sets: {
           include: {
             exercise: true,
