@@ -57,7 +57,7 @@ export default function DashboardPage() {
   });
   const [recentSessions, setRecentSessions] = useState<WorkoutSession[]>([]);
 
-  // Check authentication
+  // Check authentication and fetch data
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('accessToken');
@@ -74,15 +74,14 @@ export default function DashboardPage() {
           showToast.error('Session expired. Please login again.');
           clearAuth();
           router.push('/auth');
+          return;
         }
       }
+
+      // Fetch all data after authentication is confirmed
+      await Promise.all([fetchExercises(), fetchStats()]);
     };
 
-    checkAuth();
-  }, [user, router, setUser, clearAuth]);
-
-  // Fetch exercises
-  useEffect(() => {
     const fetchExercises = async () => {
       try {
         const response = await api.get('/exercises');
@@ -95,21 +94,16 @@ export default function DashboardPage() {
       }
     };
 
-    fetchExercises();
-  }, []);
-
-  // Fetch stats and recent activity
-  useEffect(() => {
     const fetchStats = async () => {
       try {
         // Fetch workouts
         const sessionsResponse = await api.get('/workout-sessions');
         const sessions = sessionsResponse.data.data;
-        
+
         // Fetch plans
         const plansResponse = await api.get('/workout-plans');
         const plans = plansResponse.data.data;
-        
+
         // Fetch PRs
         const prsResponse = await api.get('/personal-records');
         const prs = prsResponse.data.data;
@@ -119,10 +113,15 @@ export default function DashboardPage() {
           return sum + (session.sets?.length || 0);
         }, 0);
 
+        // Count total PRs
+        const totalPRCount = prs.reduce((sum: number, group: any) => {
+          return sum + (group.records?.length || 0);
+        }, 0);
+
         setStats({
           totalWorkouts: sessions.length,
           totalPlans: plans.length,
-          totalPRs: prs.length,
+          totalPRs: totalPRCount,
           totalSets: totalSets,
         });
 
@@ -133,8 +132,8 @@ export default function DashboardPage() {
       }
     };
 
-    fetchStats();
-  }, []);
+    checkAuth();
+  }, [user, router, setUser, clearAuth]);
 
   // Filter exercises by muscle group
   useEffect(() => {

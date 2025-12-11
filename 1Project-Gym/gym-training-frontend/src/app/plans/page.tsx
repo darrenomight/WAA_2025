@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import DashboardHeader from '@/components/DashboardHeader';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface WorkoutPlan {
   id: string;
@@ -33,6 +34,7 @@ export default function WorkoutPlansPage() {
   const { user, clearAuth, setUser } = useAuthStore();
   const [plans, setPlans] = useState<WorkoutPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -74,15 +76,17 @@ export default function WorkoutPlansPage() {
     fetchPlans();
   }, []);
 
-  const handleDeletePlan = async (planId: string) => {
-    if (!confirm('Are you sure you want to delete this plan?')) return;
+  const handleDeletePlan = async () => {
+    if (!deletePlanId) return;
 
     try {
-      await api.delete(`/workout-plans/${planId}`);
-      setPlans(plans.filter((plan) => plan.id !== planId));
+      await api.delete(`/workout-plans/${deletePlanId}`);
+      setPlans(plans.filter((plan) => plan.id !== deletePlanId));
       showToast.success('Plan deleted successfully');
     } catch (error: any) {
       showToast.error('Failed to delete plan');
+    } finally {
+      setDeletePlanId(null);
     }
   };
 
@@ -194,7 +198,7 @@ export default function WorkoutPlansPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => handleDeletePlan(plan.id)}
+                        onClick={() => setDeletePlanId(plan.id)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <svg
@@ -219,6 +223,18 @@ export default function WorkoutPlansPage() {
           </div>
         )}
       </main>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={deletePlanId !== null}
+        onOpenChange={(open) => !open && setDeletePlanId(null)}
+        onConfirm={handleDeletePlan}
+        title="Delete Workout Plan?"
+        description="Are you sure you want to delete this workout plan? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   );
 }

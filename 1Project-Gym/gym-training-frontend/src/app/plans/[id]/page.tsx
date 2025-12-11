@@ -27,6 +27,7 @@ import api from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import type { Exercise } from '@/types';
 import DashboardHeader from '@/components/DashboardHeader';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface PlanExercise {
   id: string;
@@ -66,6 +67,7 @@ export default function PlanDetailPage() {
   const [targetReps, setTargetReps] = useState('10');
   const [restTime, setRestTime] = useState('90');
   const [isAdding, setIsAdding] = useState(false);
+  const [removeExerciseId, setRemoveExerciseId] = useState<string | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -167,11 +169,10 @@ export default function PlanDetailPage() {
     }
   };
 
-  const handleRemoveExercise = async (
-    planExerciseId: string,
-    exerciseId: string
-  ) => {
-    if (!confirm("Remove this exercise from the plan?")) return;
+  const handleRemoveExercise = async () => {
+    if (!removeExerciseId) return;
+
+    const [planExerciseId, exerciseId] = removeExerciseId.split(':');
 
     try {
       await api.delete(`/workout-plans/${planId}/exercises/${exerciseId}`);
@@ -186,6 +187,8 @@ export default function PlanDetailPage() {
       }
     } catch (error: any) {
       showToast.error("Failed to remove exercise");
+    } finally {
+      setRemoveExerciseId(null);
     }
   };
 
@@ -378,10 +381,7 @@ export default function PlanDetailPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() =>
-                        handleRemoveExercise(
-                          planExercise.id,
-                          planExercise.exerciseId
-                        )
+                        setRemoveExerciseId(`${planExercise.id}:${planExercise.exerciseId}`)
                       }
                       className="text-red-600 hover:text-red-700"
                     >
@@ -446,6 +446,18 @@ export default function PlanDetailPage() {
           </div>
         )}
       </main>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={removeExerciseId !== null}
+        onOpenChange={(open) => !open && setRemoveExerciseId(null)}
+        onConfirm={handleRemoveExercise}
+        title="Remove Exercise from Plan?"
+        description="Are you sure you want to remove this exercise from the workout plan?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   );
 }

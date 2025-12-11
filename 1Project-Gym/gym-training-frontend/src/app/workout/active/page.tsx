@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import type { Exercise } from '@/types';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface WorkoutSet {
   id: string;
@@ -56,6 +57,10 @@ export default function ActiveWorkoutPage() {
   const [reps, setReps] = useState('');
   const [duration, setDuration] = useState('');
   const [isLoggingSet, setIsLoggingSet] = useState(false);
+
+  // Confirm dialog state
+  const [deleteSetId, setDeleteSetId] = useState<string | null>(null);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -174,8 +179,6 @@ export default function ActiveWorkoutPage() {
   };
 
   const handleCompleteWorkout = async () => {
-    if (!confirm('Complete this workout?')) return;
-
     try {
       await api.put(`/workout-sessions/${sessionId}/complete`, {
         notes: null,
@@ -188,22 +191,24 @@ export default function ActiveWorkoutPage() {
     }
   };
 
-  const handleDeleteSet = async (setId: string) => {
-    if (!confirm('Delete this set?')) return;
+  const handleDeleteSet = async () => {
+    if (!deleteSetId) return;
 
     try {
-      await api.delete(`/workout-sessions/sets/${setId}`);
+      await api.delete(`/workout-sessions/sets/${deleteSetId}`);
       showToast.success('Set deleted');
 
       // Update local state
       if (session) {
         setSession({
           ...session,
-          sets: session.sets.filter((set) => set.id !== setId),
+          sets: session.sets.filter((set) => set.id !== deleteSetId),
         });
       }
     } catch (error: any) {
       showToast.error('Failed to delete set');
+    } finally {
+      setDeleteSetId(null);
     }
   };
 
@@ -294,7 +299,7 @@ export default function ActiveWorkoutPage() {
             </div>
 
             {/* Set Details */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="setNumber">Set #</Label>
                 <Input
@@ -376,9 +381,9 @@ export default function ActiveWorkoutPage() {
                       {sets.map((set) => (
                         <div
                           key={set.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 rounded-lg gap-2"
                         >
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <Badge variant="outline">Set {set.setNumber}</Badge>
                             <span className="font-semibold">
                               {set.weight ? `${set.weight} kg` : '-'} ×{' '}
@@ -396,8 +401,8 @@ export default function ActiveWorkoutPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteSet(set.id)}
-                            className="text-red-600"
+                            onClick={() => setDeleteSetId(set.id)}
+                            className="text-red-600 sm:self-auto self-end"
                           >
                             Delete
                           </Button>
@@ -420,9 +425,9 @@ export default function ActiveWorkoutPage() {
         )}
 
         {/* Complete Workout Button */}
-        <div className="mt-8 flex gap-4">
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
           <Button
-            onClick={handleCompleteWorkout}
+            onClick={() => setShowCompleteDialog(true)}
             disabled={session.sets.length === 0}
             size="lg"
             className="flex-1"
@@ -433,11 +438,34 @@ export default function ActiveWorkoutPage() {
             variant="outline"
             size="lg"
             onClick={() => router.push('/dashboard')}
+            className="sm:w-auto w-full"
           >
             Cancel
           </Button>
         </div>
       </main>
+
+      {/* Confirm Dialogs */}
+      <ConfirmDialog
+        open={showCompleteDialog}
+        onOpenChange={setShowCompleteDialog}
+        onConfirm={handleCompleteWorkout}
+        title="Complete Workout?"
+        description="Are you sure you want to complete this workout session? This action cannot be undone."
+        confirmText="Complete Workout"
+        cancelText="Cancel"
+      />
+
+      <ConfirmDialog
+        open={deleteSetId !== null}
+        onOpenChange={(open) => !open && setDeleteSetId(null)}
+        onConfirm={handleDeleteSet}
+        title="Delete Set?"
+        description="Are you sure you want to delete this set? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   );
 }

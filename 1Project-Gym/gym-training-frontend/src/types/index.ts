@@ -11,12 +11,15 @@ export interface Exercise {
   id: string;
   name: string;
   description: string;
+  instructions: string;
   primaryMuscle: MuscleGroup;
   secondaryMuscles: MuscleGroup[];
   equipment: Equipment;
   difficulty: Difficulty;
   imageUrl: string | null;
   videoUrl: string | null;
+  coachingPoints: string[];
+  commonMistakes: string[];
 }
 
 export type MuscleGroup = 

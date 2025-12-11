@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import DashboardHeader from '@/components/DashboardHeader';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface WorkoutSet {
   id: string;
@@ -39,6 +40,7 @@ export default function WorkoutHistoryPage() {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -80,15 +82,17 @@ export default function WorkoutHistoryPage() {
     fetchHistory();
   }, []);
 
-  const handleDeleteSession = async (sessionId: string) => {
-    if (!confirm('Delete this workout session? This cannot be undone.')) return;
+  const handleDeleteSession = async () => {
+    if (!deleteSessionId) return;
 
     try {
-      await api.delete(`/workout-sessions/${sessionId}`);
-      setSessions(sessions.filter((s) => s.id !== sessionId));
+      await api.delete(`/workout-sessions/${deleteSessionId}`);
+      setSessions(sessions.filter((s) => s.id !== deleteSessionId));
       showToast.success('Workout session deleted');
     } catch (error: any) {
       showToast.error('Failed to delete session');
+    } finally {
+      setDeleteSessionId(null);
     }
   };
 
@@ -232,7 +236,7 @@ export default function WorkoutHistoryPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteSession(session.id)}
+                          onClick={() => setDeleteSessionId(session.id)}
                           className="text-red-600"
                         >
                           <svg
@@ -305,6 +309,18 @@ export default function WorkoutHistoryPage() {
           </div>
         )}
       </main>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={deleteSessionId !== null}
+        onOpenChange={(open) => !open && setDeleteSessionId(null)}
+        onConfirm={handleDeleteSession}
+        title="Delete Workout Session?"
+        description="Are you sure you want to delete this workout session? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   );
 }

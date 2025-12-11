@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import DashboardHeader from '@/components/DashboardHeader';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface PersonalRecord {
   id: string;
@@ -35,6 +36,7 @@ export default function PersonalRecordsPage() {
   const [groupedPRs, setGroupedPRs] = useState<GroupedPR[]>([]);
   const [totalPRs, setTotalPRs] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletePRId, setDeletePRId] = useState<string | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -77,11 +79,11 @@ export default function PersonalRecordsPage() {
     fetchPRs();
   }, []);
 
-  const handleDeletePR = async (prId: string) => {
-    if (!confirm('Delete this personal record?')) return;
+  const handleDeletePR = async () => {
+    if (!deletePRId) return;
 
     try {
-      await api.delete(`/personal-records/${prId}`);
+      await api.delete(`/personal-records/${deletePRId}`);
       // Refresh the data after deletion
       const response = await api.get('/personal-records');
       setGroupedPRs(response.data.data);
@@ -89,13 +91,9 @@ export default function PersonalRecordsPage() {
       showToast.success('Personal record deleted');
     } catch (error: any) {
       showToast.error('Failed to delete PR');
+    } finally {
+      setDeletePRId(null);
     }
-  };
-
-  const handleLogout = () => {
-    clearAuth();
-    showToast.success('Logged out successfully');
-    router.push('/');
   };
 
   const formatDate = (dateString: string) => {
@@ -228,7 +226,7 @@ export default function PersonalRecordsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeletePR(pr.id)}
+                          onClick={() => setDeletePRId(pr.id)}
                           className="text-red-600 hover:text-red-700"
                         >
                           <svg
@@ -254,6 +252,18 @@ export default function PersonalRecordsPage() {
           </div>
         )}
       </main>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={deletePRId !== null}
+        onOpenChange={(open) => !open && setDeletePRId(null)}
+        onConfirm={handleDeletePR}
+        title="Delete Personal Record?"
+        description="Are you sure you want to delete this personal record? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   );
 }
