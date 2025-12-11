@@ -45,7 +45,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
         weight: pr.weight,
         reps: pr.reps,
         duration: pr.duration,
-        achievedAt: pr.achievedAt,
+        achievedAt: pr.achievedAt.toISOString(),
       });
       return acc;
     }, {});

@@ -201,8 +201,7 @@ router.post("/:id/sets", async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "Exercise not found" });
     }
 
-    // Check if this is a personal record (we'll implement PR detection later)
-    // For now, just log the set
+    // Create the workout set
     const workoutSet = await prisma.workoutSet.create({
       data: {
         sessionId: id,
@@ -223,9 +222,107 @@ router.post("/:id/sets", async (req: AuthRequest, res: Response) => {
       },
     });
 
+    // Check if this set is a personal record
+    let isPersonalRecord = false;
+    const newPRs = [];
+
+    // Get existing PRs for this exercise
+    const existingPRs = await prisma.personalRecord.findMany({
+      where: {
+        userId: req.user.userId,
+        exerciseId,
+      },
+    });
+
+    // Check for ONE_REP_MAX (highest weight for 1 rep)
+    if (weight && reps === 1) {
+      const currentMax = existingPRs.find((pr) => pr.recordType === "ONE_REP_MAX");
+      if (!currentMax || (currentMax.weight && weight > currentMax.weight)) {
+        const pr = await prisma.personalRecord.create({
+          data: {
+            userId: req.user.userId,
+            exerciseId,
+            recordType: "ONE_REP_MAX",
+            weight,
+            reps: 1,
+          },
+          include: {
+            exercise: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
+        newPRs.push(pr);
+        isPersonalRecord = true;
+      }
+    }
+
+    // Check for BEST_SET (highest weight × reps)
+    if (weight && reps) {
+      const volume = weight * reps;
+      const currentBest = existingPRs.find((pr) => pr.recordType === "BEST_SET");
+      const currentBestVolume = currentBest?.weight && currentBest?.reps
+        ? currentBest.weight * currentBest.reps
+        : 0;
+
+      if (!currentBest || volume > currentBestVolume) {
+        const pr = await prisma.personalRecord.create({
+          data: {
+            userId: req.user.userId,
+            exerciseId,
+            recordType: "BEST_SET",
+            weight,
+            reps,
+          },
+          include: {
+            exercise: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
+        newPRs.push(pr);
+        isPersonalRecord = true;
+      }
+    }
+
+    // Check for LONGEST_DURATION (for time-based exercises)
+    if (duration) {
+      const currentLongest = existingPRs.find((pr) => pr.recordType === "LONGEST_DURATION");
+      if (!currentLongest || (currentLongest.duration && duration > currentLongest.duration)) {
+        const pr = await prisma.personalRecord.create({
+          data: {
+            userId: req.user.userId,
+            exerciseId,
+            recordType: "LONGEST_DURATION",
+            duration,
+          },
+          include: {
+            exercise: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
+        newPRs.push(pr);
+        isPersonalRecord = true;
+      }
+    }
+
     res.status(201).json({
       success: true,
-      data: workoutSet,
+      data: {
+        ...workoutSet,
+        isPersonalRecord,
+      },
+      personalRecords: newPRs.length > 0 ? newPRs : undefined,
+      message: isPersonalRecord
+        ? `🎉 NEW PERSONAL RECORD${newPRs.length > 1 ? 'S' : ''}! 🎉`
+        : undefined,
     });
   } catch (error) {
     console.error("Log set error:", error);

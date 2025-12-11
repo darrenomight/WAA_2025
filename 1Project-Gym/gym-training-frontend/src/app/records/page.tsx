@@ -12,36 +12,28 @@ import DashboardHeader from '@/components/DashboardHeader';
 
 interface PersonalRecord {
   id: string;
-  exerciseId: string;
   recordType: 'ONE_REP_MAX' | 'BEST_SET' | 'BEST_VOLUME' | 'LONGEST_DURATION';
   weight: number | null;
   reps: number | null;
   duration: number | null;
   achievedAt: string;
+}
+
+interface GroupedPR {
   exercise: {
     id: string;
     name: string;
     primaryMuscle: string;
     equipment: string;
   };
-}
-
-interface GroupedPRs {
-  [exerciseId: string]: {
-    exercise: {
-      id: string;
-      name: string;
-      primaryMuscle: string;
-      equipment: string;
-    };
-    records: PersonalRecord[];
-  };
+  records: PersonalRecord[];
 }
 
 export default function PersonalRecordsPage() {
   const router = useRouter();
   const { user, clearAuth, setUser } = useAuthStore();
-  const [prs, setPrs] = useState<PersonalRecord[]>([]);
+  const [groupedPRs, setGroupedPRs] = useState<GroupedPR[]>([]);
+  const [totalPRs, setTotalPRs] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check authentication
@@ -73,7 +65,8 @@ export default function PersonalRecordsPage() {
     const fetchPRs = async () => {
       try {
         const response = await api.get('/personal-records');
-        setPrs(response.data.data);
+        setGroupedPRs(response.data.data);
+        setTotalPRs(response.data.total || 0);
       } catch (error: any) {
         showToast.error('Failed to load personal records');
       } finally {
@@ -89,7 +82,10 @@ export default function PersonalRecordsPage() {
 
     try {
       await api.delete(`/personal-records/${prId}`);
-      setPrs(prs.filter((pr) => pr.id !== prId));
+      // Refresh the data after deletion
+      const response = await api.get('/personal-records');
+      setGroupedPRs(response.data.data);
+      setTotalPRs(response.data.total || 0);
       showToast.success('Personal record deleted');
     } catch (error: any) {
       showToast.error('Failed to delete PR');
@@ -139,17 +135,6 @@ export default function PersonalRecordsPage() {
     return '-';
   };
 
-  // Group PRs by exercise
-  const groupedPRs: GroupedPRs = prs.reduce((acc, pr) => {
-    if (!acc[pr.exerciseId]) {
-      acc[pr.exerciseId] = {
-        exercise: pr.exercise,
-        records: [],
-      };
-    }
-    acc[pr.exerciseId].records.push(pr);
-    return acc;
-  }, {} as GroupedPRs);
 
   if (isLoading) {
     return (
@@ -171,14 +156,14 @@ export default function PersonalRecordsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Personal Records 🏆</h1>
           <p className="text-gray-600">
-            {prs.length} total record{prs.length !== 1 ? 's' : ''} across{' '}
-            {Object.keys(groupedPRs).length} exercise
-            {Object.keys(groupedPRs).length !== 1 ? 's' : ''}
+            {totalPRs} total record{totalPRs !== 1 ? 's' : ''} across{' '}
+            {groupedPRs.length} exercise
+            {groupedPRs.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         {/* PRs List */}
-        {prs.length === 0 ? (
+        {groupedPRs.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent className="pt-6">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -207,7 +192,7 @@ export default function PersonalRecordsPage() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {Object.values(groupedPRs).map(({ exercise, records }) => (
+            {groupedPRs.map(({ exercise, records }) => (
               <Card key={exercise.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -222,7 +207,7 @@ export default function PersonalRecordsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {records.map((pr) => (
+                    {records.map((pr: PersonalRecord) => (
                       <div
                         key={pr.id}
                         className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200"
